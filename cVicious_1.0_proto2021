@@ -1,0 +1,115 @@
+
+#include <MIDI.h>
+#include <SPI.h>
+
+/*--------------------Edit these as necessary---------------------*/
+#define midiChannel 5     // Midi channel for pulse1Pin + all pots
+#define pulse2Channel 6   // Midi channel for pulse2Pin 
+#define pulseLength 100   // Length of pulses (in ms) 
+int ccArray[8] = {20, 21, 22, 23, 24, 25, 26, 27};  // Midi CC numbers for pots 1-8
+/*----------------------------------------------------------------*/
+
+#define pulse1Pin 10   //p9 on pcb
+#define pulse2Pin 12   //p10 on pcb
+
+int csArray[8] = {2, 3, 4, 5, 6, 7, 8, 9};          // Chip select pins for pots 1-8
+
+bool pulse1On = false;
+unsigned long int pulse1Time = 0;
+
+bool pulse2On = false;
+unsigned long int pulse2Time = 0;
+
+MIDI_CREATE_DEFAULT_INSTANCE();
+
+void setDigiPot(byte cs, byte value) {
+    digitalWrite(cs, LOW);
+    SPI.transfer(0);
+    SPI.transfer(value*2); 
+    digitalWrite(cs, HIGH);
+}
+
+void handleNoteOn(byte channel, byte pitch, byte velocity) {
+  switch (channel) {
+    case midiChannel:
+      digitalWrite(pulse1Pin, HIGH);
+      pulse1On = true;
+      pulse1Time = millis();
+      break;
+    case pulse2Channel:
+      digitalWrite(pulse2Pin, HIGH);
+      pulse2On = true;
+      pulse2Time = millis();      
+      break;
+    default:
+      break;  
+  }
+}
+
+void handleNoteOff(byte channel, byte pitch, byte velocity) {
+  //MIDI.sendNoteOff(pitch, velocity, channel);   // Not doing anything here yet....
+}
+
+void handleCC(byte channel, byte number, byte value) {
+  if (channel == midiChannel) {
+      if (number == ccArray[0]) {
+        setDigiPot(csArray[0], value);
+      } else if (number == ccArray[1]) {
+        setDigiPot(csArray[1], value);
+      } else if (number == ccArray[2]) {
+        setDigiPot(csArray[2], value);
+      } else if (number == ccArray[3]) {
+        setDigiPot(csArray[3], value);
+      } else if (number == ccArray[4]) {
+        setDigiPot(csArray[4], value);
+      } else if (number == ccArray[5]) {
+        setDigiPot(csArray[5], value);
+      } else if (number == ccArray[6]) {
+        setDigiPot(csArray[6], value);
+      } else if (number == ccArray[7]) {
+        setDigiPot(csArray[7], value);
+      }
+  }
+}
+
+void setup() {
+  SPI.begin();
+
+  pinMode(csArray[0], OUTPUT);
+  setDigiPot(csArray[0], 0);
+  pinMode(csArray[1], OUTPUT);
+  setDigiPot(csArray[1], 0);
+  pinMode(csArray[2], OUTPUT);
+  setDigiPot(csArray[2], 0);
+  pinMode(csArray[3], OUTPUT);
+  setDigiPot(csArray[3], 0);
+  pinMode(csArray[4], OUTPUT);
+  setDigiPot(csArray[4], 0);
+  pinMode(csArray[5], OUTPUT);
+  setDigiPot(csArray[5], 0);
+  pinMode(csArray[6], OUTPUT);
+  setDigiPot(csArray[6], 0);
+  pinMode(csArray[7], OUTPUT);
+  setDigiPot(csArray[7], 0);
+  
+  pinMode(pulse1Pin, OUTPUT);
+  digitalWrite(pulse1Pin, LOW);
+  pinMode(pulse2Pin, OUTPUT);
+  digitalWrite(pulse2Pin, LOW);
+  
+  MIDI.setHandleNoteOn(handleNoteOn);  
+  MIDI.setHandleNoteOff(handleNoteOff);  //This is currently unused
+  MIDI.setHandleControlChange(handleCC);
+  MIDI.begin(MIDI_CHANNEL_OMNI);
+}
+
+void loop() {
+  MIDI.read();
+  if (pulse1On == true && (millis()-pulse1Time) >= pulseLength) {    //If pulse pin is HIGH and its been longer than pulseLength
+     digitalWrite(pulse1Pin, LOW);                                   //Turn off arp pulse pin
+     pulse1On = false;                                               //Set variable to know pulse pin is off
+  } else if (pulse2On == true && (millis()-pulse2Time) >= pulseLength) {
+     digitalWrite(pulse2Pin, LOW);
+     pulse2On = false;
+  }
+}
